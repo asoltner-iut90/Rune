@@ -1,0 +1,13 @@
+[package]
+name = "native"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "native"
+# Indique à Rust de compiler un binaire dynamique (.so/.pyd) pour Python
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+vt100 = "0.16.2"

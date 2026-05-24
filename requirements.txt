@@ -1,0 +1,5 @@
+textual
+opencv-python
+numpy
+pyte
+ipc
