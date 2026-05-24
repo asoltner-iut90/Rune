@@ -6,35 +6,25 @@ import termios
 import struct
 import subprocess
 
-from textual.widget import Widget
 from textual.strip import Strip
 from rich.segment import Segment
 from rich.style import Style
-import native  # Conservé selon ton code original
+import native
+
+from core.application import Application
 
 
-class PTYWidget(Widget):
+class PTYWidget(Application):
     can_focus = True
 
-    DEFAULT_CSS = """
-    PTYWidget {
-        border: solid $accent;
-        height: 100%;
-        width: 100%;
-    }
-    PTYWidget:focus {
-        border: solid $primary;
-    }
-    """
-
-    def __init__(self, command: list[str] = None, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, command: list[str] = None):
+        super().__init__("Terminal", "$")
         self.command = command or ["bash"]
         self.master_fd = None
         self.process = None
         self._terminal = None
         self._style_cache = {}
-        self._loop = None  # On garde une référence à la boucle de rendering
+        self._loop = None  # keep a reference to the rendering loop
 
     def on_mount(self) -> None:
         rows = self.content_size.height or 24
@@ -45,7 +35,7 @@ class PTYWidget(Widget):
         self.master_fd, slave_fd = pty.openpty()
         self._set_pty_size(rows, cols)
 
-        # 1. Rendre le master_fd NON-BLOQUANT pour l'intégration avec asyncio
+        # Make the master_fd non-blocking for asyncio integration
         fl = fcntl.fcntl(self.master_fd, fcntl.F_GETFL)
         fcntl.fcntl(self.master_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
@@ -56,20 +46,21 @@ class PTYWidget(Widget):
         )
         os.close(slave_fd)
 
-        # 2. Utiliser add_reader plutôt qu'un worker de thread
+        # Use add_reader instead of a worker thread
         self._loop = asyncio.get_running_loop()
         self._loop.add_reader(self.master_fd, self._on_pty_read)
 
     def _on_pty_read(self) -> None:
-        """Callback déclenché dès que le PTY a des données disponibles."""
+        """Callback triggered when PTY has data available."""
         try:
             data = os.read(self.master_fd, 65536)
             if data:
                 self._terminal.process(data)
                 self.refresh()
+            else:
+                self.remove()
         except OSError:
-            # Le PTY a probablement été fermé, on ignore l'erreur de lecture
-            pass
+            self.remove()
 
     def on_resize(self, event) -> None:
         if self.master_fd and self._terminal:
@@ -82,26 +73,29 @@ class PTYWidget(Widget):
                 self.refresh()
 
     async def on_unmount(self) -> None:
-        # 1. On retire immédiatement le reader de la boucle d'événements
+        await super().on_unmount()
+        # Remove the reader from the event loop immediately
         if self.master_fd and self._loop:
             self._loop.remove_reader(self.master_fd)
 
-        # 2. On tue brutalement le processus (SIGKILL) car bash ignore SIGTERM
+        # Kill the process forcibly
         if self.process:
-            self.process.kill()  # Nettoyage forcé
-            self.process.wait()  # On attend qu'il devienne un zombie nettoyé
+            self.process.kill()
+            self.process.wait()
 
-        # 3. On ferme le descripteur proprement
+        # Close the file descriptor
         if self.master_fd:
             try:
                 os.close(self.master_fd)
             except OSError:
                 pass
 
-    # ─── Input & Rendu (Inchangés) ────────────────────────────────────────────
+    # ─── Input & Rendering (Unchanged) ───────────────────────────────────────
 
     def on_key(self, event) -> None:
         if not self.master_fd:
+            return
+        if event.key == "ctrl+n":
             return
         data = self._key_to_bytes(event.key)
         if data:
@@ -143,6 +137,7 @@ class PTYWidget(Widget):
             "end": b"\x1b[F", "delete": b"\x1b[3~", "pageup": b"\x1b[5~",
             "pagedown": b"\x1b[6~",
         }
+
         if key in mapping:
             return mapping[key]
         if key.startswith("ctrl+"):

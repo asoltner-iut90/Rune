@@ -1,32 +1,6 @@
 use pyo3::prelude::*;
 use vt100::Parser;
 
-#[derive(Clone, PartialEq, Eq)]
-struct InternalStyle {
-    fg: vt100::Color,
-    bg: vt100::Color,
-    bold: bool,
-    italic: bool,
-    underline: bool,
-    inverse: bool,
-}
-
-fn convert_style(s: InternalStyle) -> (Option<String>, Option<String>, bool, bool, bool, bool) {
-    let fg_str = match s.fg {
-        vt100::Color::Default => None,
-        vt100::Color::Idx(i) => Some(format!("color({})", i)),
-        vt100::Color::Rgb(r, g, b) => Some(format!("#{:02x}{:02x}{:02x}", r, g, b)),
-    };
-
-    let bg_str = match s.bg {
-        vt100::Color::Default => None,
-        vt100::Color::Idx(i) => Some(format!("color({})", i)),
-        vt100::Color::Rgb(r, g, b) => Some(format!("#{:02x}{:02x}{:02x}", r, g, b)),
-    };
-
-    (fg_str, bg_str, s.bold, s.italic, s.underline, s.inverse)
-}
-
 #[pyclass]
 struct TerminalEngine {
     parser: Parser,
@@ -50,6 +24,10 @@ impl TerminalEngine {
     }
 
     fn resize(&mut self, cols: u16, rows: u16) {
+
+        if self.cols == cols && self.rows == rows {
+            return;
+        }
         self.parser = Parser::new(rows, cols, 0);
         self.cols = cols;
         self.rows = rows;
@@ -63,7 +41,7 @@ impl TerminalEngine {
         self.parser.screen().hide_cursor()
     }
 
-    fn render_line(&self, y: u16, has_focus: bool) -> PyResult<Vec<(String, (Option<String>, Option<String>, bool, bool, bool, bool))>> {
+    fn render_line(&self, y: u16, has_focus: bool) -> PyResult<Vec<(String, (String, String, bool, bool, bool, bool))>> {
         let mut segments = Vec::new();
         let screen = self.parser.screen();
 
@@ -72,7 +50,7 @@ impl TerminalEngine {
         }
 
         let mut current_text = String::new();
-        let mut current_style: Option<InternalStyle> = None;
+        let mut current_style = None;
 
         let (cursor_row, cursor_col) = screen.cursor_position();
         let hide_cursor = screen.hide_cursor();
@@ -82,42 +60,40 @@ impl TerminalEngine {
                 let c = cell.contents();
                 let data = if c.is_empty() { " " } else { c };
 
+                let fg_str = match cell.fgcolor() {
+                    vt100::Color::Default => "default".to_string(),
+                    vt100::Color::Idx(i) => format!("color({})", i),
+                    vt100::Color::Rgb(r, g, b) => format!("#{:02x}{:02x}{:02x}", r, g, b),
+                };
+
+                let bg_str = match cell.bgcolor() {
+                    vt100::Color::Default => "default".to_string(),
+                    vt100::Color::Idx(i) => format!("color({})", i),
+                    vt100::Color::Rgb(r, g, b) => format!("#{:02x}{:02x}{:02x}", r, g, b),
+                };
+
                 let mut inverse = cell.inverse();
                 if has_focus && !hide_cursor && cursor_row == y && cursor_col == x {
                     inverse = !inverse;
                 }
 
-                (data, InternalStyle {
-                    fg: cell.fgcolor(),
-                    bg: cell.bgcolor(),
-                    bold: cell.bold(),
-                    italic: cell.italic(),
-                    underline: cell.underline(),
-                    inverse,
-                })
+                (data, (fg_str, bg_str, cell.bold(), cell.italic(), cell.underline(), inverse))
             } else {
                 let mut inverse = false;
                 if has_focus && !hide_cursor && cursor_row == y && cursor_col == x {
                     inverse = true;
                 }
-                (" ", InternalStyle {
-                    fg: vt100::Color::Default,
-                    bg: vt100::Color::Default,
-                    bold: false,
-                    italic: false,
-                    underline: false,
-                    inverse,
-                })
+                (" ", ("default".to_string(), "default".to_string(), false, false, false, inverse))
             };
 
             if current_style.is_none() {
-                current_style = Some(style);
+                current_style = Some(style.clone());
                 current_text.push_str(cell_data);
             } else if Some(&style) == current_style.as_ref() {
                 current_text.push_str(cell_data);
             } else {
                 if let Some(s) = current_style {
-                    segments.push((current_text, convert_style(s)));
+                    segments.push((current_text, s));
                 }
                 current_style = Some(style);
                 current_text = cell_data.to_string();
@@ -125,7 +101,7 @@ impl TerminalEngine {
         }
 
         if let Some(s) = current_style {
-            segments.push((current_text, convert_style(s)));
+            segments.push((current_text, s));
         }
 
         Ok(segments)
