@@ -1,5 +1,5 @@
 from textual.widget import Widget
-from core.application import Application
+from core.window import Window
 
 
 class Workspace(Widget):
@@ -14,5 +14,5 @@ class Workspace(Widget):
     def __init__(self, *children):
         super().__init__(*children)
 
-    def add_window(self, window: Application):
+    def add_window(self, window: Window):
         self.mount(window)

@@ -1,15 +1,15 @@
 from textual.widget import Widget
 
 
-class Application(Widget):
+class Window(Widget):
 
     DEFAULT_CSS = """
-    Application {
+    Window {
         border: solid $accent;
         height: 1fr;
         width: 1fr;
     }
-    Application:focus {
+    Window:focus {
         border: solid $primary;
     }
     """

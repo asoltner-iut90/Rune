@@ -11,10 +11,10 @@ from rich.segment import Segment
 from rich.style import Style
 import native
 
-from core.application import Application
+from core.window import Window
 
 
-class PTYWidget(Application):
+class PTYWidget(Window):
     can_focus = True
 
     def __init__(self, command: list[str] = None):

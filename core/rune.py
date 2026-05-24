@@ -9,11 +9,11 @@ from core.workspace import Workspace
 class Rune(App):
 
     DEFAULT_CSS = """
-    Rune.zoom-active Application {
+    Rune.zoom-active Window {
         display: none;
     }
 
-    Rune.zoom-active Application.zoomed {
+    Rune.zoom-active Window.zoomed {
         display: block;
     }
     """
