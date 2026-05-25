@@ -22,13 +22,11 @@ impl TerminalEngine {
     fn process(&mut self, bytes: &[u8]) {
         self.parser.process(bytes);
     }
-
     fn resize(&mut self, cols: u16, rows: u16) {
-
         if self.cols == cols && self.rows == rows {
             return;
         }
-        self.parser = Parser::new(rows, cols, 0);
+        self.parser.screen_mut().set_size(rows, cols);
         self.cols = cols;
         self.rows = rows;
     }

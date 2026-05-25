@@ -1,0 +1,28 @@
+#!/usr/bin/env python3
+import sys
+import socket
+import json
+import os
+
+def main():
+    socket_path = os.environ.get("RUNE_SOCKET", "/tmp/rune.sock")
+
+    if len(sys.argv) < 3 or sys.argv[1] != "open":
+        print("Usage: rune open <app_name>")
+        sys.exit(1)
+
+    payload = {
+        "action": "open",
+        "app": sys.argv[2]
+    }
+
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+            s.connect(socket_path)
+            s.sendall(json.dumps(payload).encode())
+    except Exception as e:
+        print(f"Error connecting to Rune IPC: {e}", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

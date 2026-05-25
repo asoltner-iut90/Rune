@@ -24,7 +24,7 @@ class PTYWidget(Window):
         self.process = None
         self._terminal = None
         self._style_cache = {}
-        self._loop = None  # keep a reference to the rendering loop
+        self._loop = None
 
     def on_mount(self) -> None:
         rows = self.content_size.height or 24
@@ -38,9 +38,11 @@ class PTYWidget(Window):
         fl = fcntl.fcntl(self.master_fd, fcntl.F_GETFL)
         fcntl.fcntl(self.master_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-        # Injecting the IPC socket path into the child process environment
         env = os.environ.copy()
         env["RUNE_SOCKET"] = "/tmp/rune.sock"
+
+        bin_dir = os.path.abspath("bin")
+        env["PATH"] = f"{bin_dir}:{env.get('PATH', '')}"
 
         self.process = subprocess.Popen(
             self.command,
@@ -54,7 +56,6 @@ class PTYWidget(Window):
         self._loop.add_reader(self.master_fd, self._on_pty_read)
 
     def _on_pty_read(self) -> None:
-        """Callback triggered when PTY has data available."""
         try:
             data = os.read(self.master_fd, 65536)
             if data:
@@ -77,23 +78,18 @@ class PTYWidget(Window):
 
     async def on_unmount(self) -> None:
         await super().on_unmount()
-        # Remove the reader from the event loop immediately
         if self.master_fd and self._loop:
             self._loop.remove_reader(self.master_fd)
 
-        # Kill the process forcibly
         if self.process:
             self.process.kill()
             self.process.wait()
 
-        # Close the file descriptor
         if self.master_fd:
             try:
                 os.close(self.master_fd)
             except OSError:
                 pass
-
-    # ─── Input & Rendering (Unchanged) ───────────────────────────────────────
 
     def on_key(self, event: events.Key) -> None:
         if not self.master_fd:
@@ -163,5 +159,3 @@ class PTYWidget(Window):
             if len(c) == 1:
                 return bytes([ord(c) - 96])
         return None
-
-

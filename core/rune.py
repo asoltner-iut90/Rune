@@ -11,10 +11,14 @@ from core.registry import APP_REGISTRY
 import asyncio
 import json
 import os
+import sys
+import fcntl
+
 
 class Rune(App):
     ENABLE_COMMAND_PALETTE = False
     SOCKET_PATH = "/tmp/rune.sock"
+    LOCK_PATH = "/tmp/rune.lock"
     DEFAULT_CSS = """
     Rune.zoom-active Window {
         display: none;
@@ -37,8 +41,18 @@ class Rune(App):
 
     def __init__(self):
         super().__init__()
+        self._lock_file = None
+        self._ensure_single_instance()
         self.workspace = Workspace()
         self.manager = ApplicationManager(self.workspace)
+
+    def _ensure_single_instance(self) -> None:
+        try:
+            self._lock_file = open(self.LOCK_PATH, "w")
+            fcntl.flock(self._lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            print("Error: Another instance of Rune is already running.", file=sys.stderr)
+            sys.exit(1)
 
     def compose(self) -> ComposeResult:
         yield Horizontal(
