@@ -139,7 +139,7 @@ class Rune(App):
             data = await reader.read(4096)
             if data:
                 payload = json.loads(data.decode())
-                if payload.get("action") == "open":
+                if payload.get("action") == "run":
                     self.call_later(self._open_app_by_name, payload.get("app"))
         except Exception:
             pass

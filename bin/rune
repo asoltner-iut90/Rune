@@ -7,12 +7,12 @@ import os
 def main():
     socket_path = os.environ.get("RUNE_SOCKET", "/tmp/rune.sock")
 
-    if len(sys.argv) < 3 or sys.argv[1] != "open":
-        print("Usage: rune open <app_name>")
+    if len(sys.argv) < 3 or sys.argv[1] != "run":
+        print("Usage: rune run <app_name>")
         sys.exit(1)
 
     payload = {
-        "action": "open",
+        "action": "run",
         "app": sys.argv[2]
     }
 
