@@ -5,15 +5,17 @@ from textual.binding import Binding
 from core.application_manager import ApplicationManager
 from core.pty_widget import PTYWidget
 from core.workspace import Workspace
+from core.application_launcher import ApplicationLauncher
+from core.registry import APP_REGISTRY
 
 class Rune(App):
-
+    ENABLE_COMMAND_PALETTE = False
     DEFAULT_CSS = """
-    Rune.zoom-active Window {
+    Rune.zoom-active Application {
         display: none;
     }
 
-    Rune.zoom-active Window.zoomed {
+    Rune.zoom-active Application.zoomed {
         display: block;
     }
     """
@@ -24,6 +26,7 @@ class Rune(App):
         Binding("ctrl+left", "navigate('left')", show=False),
         Binding("ctrl+right", "navigate('right')", show=False),
         Binding("ctrl+n", "add_new_window()", show=False),
+        Binding("ctrl+p", "show_launcher()", show=False),
         Binding("ctrl+f11", "toggle_zoom()", show=False),
     ]
 
@@ -47,28 +50,22 @@ class Rune(App):
             return
 
         current_reg = focused.region
-
         focusable_widgets = [w for w in self.screen.query("*") if w.focusable]
-
         candidates = [w for w in focusable_widgets if w is not focused]
-
         best_candidate = None
 
         if direction == "right":
             right_side = [w for w in candidates if w.region.x >= current_reg.right]
             if right_side:
                 best_candidate = min(right_side, key=lambda w: w.region.x)
-
         elif direction == "left":
             left_side = [w for w in candidates if w.region.right <= current_reg.x]
             if left_side:
                 best_candidate = max(left_side, key=lambda w: w.region.right)
-
         elif direction == "up":
             above = [w for w in candidates if w.region.bottom <= current_reg.y]
             if above:
                 best_candidate = max(above, key=lambda w: w.region.bottom)
-
         elif direction == "down":
             below = [w for w in candidates if w.region.y >= current_reg.bottom]
             if below:
@@ -82,6 +79,15 @@ class Rune(App):
         self.manager.add_application(new)
         new.focus()
 
+    def action_show_launcher(self) -> None:
+        def handle_selection(app_entry: dict | None) -> None:
+            if app_entry:
+                new_app = app_entry["class"]()
+                self.manager.add_application(new_app)
+                new_app.focus()
+
+        self.push_screen(ApplicationLauncher(APP_REGISTRY), handle_selection)
+
     def action_toggle_zoom(self):
         focused = self.focused
         if not focused or not focused.can_focus:
@@ -93,6 +99,3 @@ class Rune(App):
         else:
             self.add_class("zoom-active")
             focused.add_class("zoomed")
-
-
-
