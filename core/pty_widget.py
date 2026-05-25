@@ -95,7 +95,7 @@ class PTYWidget(Window):
     def on_key(self, event) -> None:
         if not self.master_fd:
             return
-        if event.key == "ctrl+n":
+        if event.key in ("ctrl+n", "ctrl+p"):
             return
         data = self._key_to_bytes(event.key)
         if data:

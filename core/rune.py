@@ -4,6 +4,7 @@ from textual.binding import Binding
 
 from core.application_manager import ApplicationManager
 from core.pty_widget import PTYWidget
+from core.window import Window
 from core.workspace import Workspace
 from core.application_launcher import ApplicationLauncher
 from core.registry import APP_REGISTRY
@@ -91,6 +92,9 @@ class Rune(App):
     def action_toggle_zoom(self):
         focused = self.focused
         if not focused or not focused.can_focus:
+            return
+
+        if not isinstance(focused, Window):
             return
 
         if self.has_class("zoom-active"):

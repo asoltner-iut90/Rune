@@ -8,7 +8,7 @@ from textual.events import Key
 
 class ApplicationLauncher(ModalScreen):
     DEFAULT_CSS = """
-    AppLauncher {
+    ApplicationLauncher {
         align: center top;
         background: rgba(0, 0, 0, 0.5);
     }
