@@ -1,22 +1,26 @@
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal
 from textual.binding import Binding
-
+from textual import events
 from core.application_manager import ApplicationManager
 from core.pty_widget import PTYWidget
 from core.window import Window
 from core.workspace import Workspace
 from core.application_launcher import ApplicationLauncher
 from core.registry import APP_REGISTRY
+import asyncio
+import json
+import os
 
 class Rune(App):
     ENABLE_COMMAND_PALETTE = False
+    SOCKET_PATH = "/tmp/rune.sock"
     DEFAULT_CSS = """
-    Rune.zoom-active Application {
+    Rune.zoom-active Window {
         display: none;
     }
 
-    Rune.zoom-active Application.zoomed {
+    Rune.zoom-active Window.zoomed {
         display: block;
     }
     """
@@ -44,6 +48,7 @@ class Rune(App):
     def on_mount(self) -> None:
         if self.screen.focusable:
             self.screen.focusable[0].focus()
+        self.run_worker(self._start_ipc_server())
 
     def action_navigate(self, direction: str) -> None:
         focused = self.focused
@@ -70,7 +75,7 @@ class Rune(App):
         elif direction == "down":
             below = [w for w in candidates if w.region.y >= current_reg.bottom]
             if below:
-                best_candidate = min(below, key=lambda w: w.region.y)
+                best_candidate = min(below, key=lambda w: w.region.bottom)
 
         if best_candidate:
             best_candidate.focus()
@@ -103,3 +108,39 @@ class Rune(App):
         else:
             self.add_class("zoom-active")
             focused.add_class("zoomed")
+
+    async def _start_ipc_server(self) -> None:
+        if os.path.exists(self.SOCKET_PATH):
+            os.remove(self.SOCKET_PATH)
+
+        self.ipc_server = await asyncio.start_unix_server(
+            self._handle_ipc_client,
+            path=self.SOCKET_PATH
+        )
+        async with self.ipc_server:
+            await self.ipc_server.serve_forever()
+
+    async def _handle_ipc_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        try:
+            data = await reader.read(4096)
+            if data:
+                payload = json.loads(data.decode())
+                if payload.get("action") == "open":
+                    self.call_later(self._open_app_by_name, payload.get("app"))
+        except Exception:
+            pass
+        finally:
+            writer.close()
+            await writer.wait_closed()
+
+    def _open_app_by_name(self, name: str) -> None:
+        for app in APP_REGISTRY:
+            if app["name"].lower() == name.lower():
+                new_app = app["class"]()
+                self.manager.add_application(new_app)
+                new_app.focus()
+                break
+
+    async def on_unmount(self) -> None:
+        if os.path.exists(self.SOCKET_PATH):
+            os.remove(self.SOCKET_PATH)

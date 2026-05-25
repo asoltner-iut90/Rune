@@ -5,7 +5,7 @@ import fcntl
 import termios
 import struct
 import subprocess
-
+from textual import events
 from textual.strip import Strip
 from rich.segment import Segment
 from rich.style import Style
@@ -35,18 +35,21 @@ class PTYWidget(Window):
         self.master_fd, slave_fd = pty.openpty()
         self._set_pty_size(rows, cols)
 
-        # Make the master_fd non-blocking for asyncio integration
         fl = fcntl.fcntl(self.master_fd, fcntl.F_GETFL)
         fcntl.fcntl(self.master_fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+        # Injecting the IPC socket path into the child process environment
+        env = os.environ.copy()
+        env["RUNE_SOCKET"] = "/tmp/rune.sock"
 
         self.process = subprocess.Popen(
             self.command,
             stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
-            close_fds=True, start_new_session=True
+            close_fds=True, start_new_session=True,
+            env=env
         )
         os.close(slave_fd)
 
-        # Use add_reader instead of a worker thread
         self._loop = asyncio.get_running_loop()
         self._loop.add_reader(self.master_fd, self._on_pty_read)
 
@@ -92,15 +95,30 @@ class PTYWidget(Window):
 
     # ─── Input & Rendering (Unchanged) ───────────────────────────────────────
 
-    def on_key(self, event) -> None:
+    def on_key(self, event: events.Key) -> None:
         if not self.master_fd:
             return
         if event.key in ("ctrl+n", "ctrl+p"):
             return
+
         data = self._key_to_bytes(event.key)
         if data:
             event.stop()
             os.write(self.master_fd, data)
+            return
+
+        if event.character:
+            event.stop()
+            os.write(self.master_fd, event.character.encode())
+
+    def on_paste(self, event: events.Paste) -> None:
+        if not self.master_fd:
+            return
+        event.stop()
+        try:
+            os.write(self.master_fd, event.text.replace("\n", "\r").encode())
+        except OSError:
+            pass
 
     def render_line(self, y: int) -> Strip:
         if not self._terminal:
@@ -131,7 +149,7 @@ class PTYWidget(Window):
 
     def _key_to_bytes(self, key: str) -> bytes | None:
         mapping = {
-            "space": b" ", "enter": b"\r", "escape": b"\x1b", "tab": b"\t",
+            "enter": b"\r", "escape": b"\x1b", "tab": b"\t",
             "backspace": b"\x7f", "up": b"\x1b[A", "down": b"\x1b[B",
             "right": b"\x1b[C", "left": b"\x1b[D", "home": b"\x1b[H",
             "end": b"\x1b[F", "delete": b"\x1b[3~", "pageup": b"\x1b[5~",
@@ -144,6 +162,6 @@ class PTYWidget(Window):
             c = key.split("+")[1].lower()
             if len(c) == 1:
                 return bytes([ord(c) - 96])
-        if len(key) == 1:
-            return key.encode()
         return None
+
+
