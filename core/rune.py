@@ -30,13 +30,13 @@ class Rune(App):
     """
 
     BINDINGS = [
-        Binding("ctrl+up", "navigate('up')", show=False),
-        Binding("ctrl+down", "navigate('down')", show=False),
-        Binding("ctrl+left", "navigate('left')", show=False),
-        Binding("ctrl+right", "navigate('right')", show=False),
-        Binding("ctrl+n", "add_new_window()", show=False),
-        Binding("ctrl+p", "show_launcher()", show=False),
-        Binding("ctrl+f11", "toggle_zoom()", show=False),
+        Binding("ctrl+up", "navigate('up')", show=False, priority=True),
+        Binding("ctrl+down", "navigate('down')", show=False, priority=True),
+        Binding("ctrl+left", "navigate('left')", show=False, priority=True),
+        Binding("ctrl+right", "navigate('right')", show=False, priority=True),
+        Binding("ctrl+n", "add_new_window()", show=False, priority=True),
+        Binding("ctrl+p", "show_launcher()", show=False, priority=True),
+        Binding("ctrl+f11", "toggle_zoom()", show=False, priority=True),
     ]
 
     def __init__(self):
@@ -140,17 +140,22 @@ class Rune(App):
             if data:
                 payload = json.loads(data.decode())
                 if payload.get("action") == "run":
-                    self.call_later(self._open_app_by_name, payload.get("app"))
+                    self.call_later(
+                        self._open_app_by_name,
+                        payload.get("app"),
+                        payload.get("args", [])
+                    )
         except Exception:
             pass
         finally:
             writer.close()
             await writer.wait_closed()
 
-    def _open_app_by_name(self, name: str) -> None:
+    def _open_app_by_name(self, name: str, args: list = None) -> None:
+        args = args or []
         for app in APP_REGISTRY:
             if app["name"].lower() == name.lower():
-                new_app = app["class"]()
+                new_app = app["class"](*args)
                 self.manager.add_application(new_app)
                 new_app.focus()
                 break

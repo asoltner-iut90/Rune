@@ -15,11 +15,10 @@ from core.window import Window
 
 
 class PTYWidget(Window):
-    can_focus = True
 
-    def __init__(self, command: list[str] = None):
+    def __init__(self, *args, **kwargs):
         super().__init__("Terminal", "$")
-        self.command = command or ["bash"]
+        self.command = list(args) if args else ["bash"]
         self.master_fd = None
         self.process = None
         self._terminal = None

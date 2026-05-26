@@ -8,12 +8,13 @@ def main():
     socket_path = os.environ.get("RUNE_SOCKET", "/tmp/rune.sock")
 
     if len(sys.argv) < 3 or sys.argv[1] != "run":
-        print("Usage: rune run <app_name>")
+        print("Usage: rune run <app_name> [args...]")
         sys.exit(1)
 
     payload = {
         "action": "run",
-        "app": sys.argv[2]
+        "app": sys.argv[2],
+        "args": sys.argv[3:]  # Capture tous les arguments restants sous forme de liste
     }
 
     try:
