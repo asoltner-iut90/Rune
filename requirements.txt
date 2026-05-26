@@ -5,3 +5,4 @@ pyte
 ipc
 textual-markdown
 textual[syntax]
+pillow

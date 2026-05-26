@@ -16,6 +16,7 @@ class Window(Widget):
 
     def __init__(self, name: str, icon: str):
         super().__init__(name=name)
+        icon = icon.replace("\ufe0f", "")
         assert len(icon) == 1, "Icon must be a single character"
         self.icon: str = icon
         self.border_title: str = f"{icon} {name}"

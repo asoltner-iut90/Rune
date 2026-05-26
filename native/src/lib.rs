@@ -1,3 +1,5 @@
+mod image_engine;
+pub use image_engine::ImageEngine;
 use pyo3::prelude::*;
 use vt100::Parser;
 
@@ -109,5 +111,6 @@ impl TerminalEngine {
 #[pymodule]
 fn native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<TerminalEngine>()?;
+    m.add_class::<ImageEngine>()?;
     Ok(())
 }
