@@ -106,8 +106,10 @@ class Rune(App):
         if best_candidate:
             best_candidate.focus()
 
-
     def action_show_launcher(self) -> None:
+        if isinstance(self.screen, ApplicationLauncher):
+            return
+
         def handle_selection(app_entry: dict | None) -> None:
             if app_entry:
                 new_app = app_entry["class"]()
