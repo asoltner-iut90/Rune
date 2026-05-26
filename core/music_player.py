@@ -40,7 +40,7 @@ class MusicPlayer(Window):
     }
     MusicPlayer .wave {
         color: $accent;
-        height: 1;
+        height: 4;
         margin: 1 0;
     }
     MusicPlayer ProgressBar {
@@ -60,7 +60,7 @@ class MusicPlayer(Window):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__("Music Player", "🎵")
+        super().__init__("Music Player", ">")
         self.file_path = args[0] if args else None
         self.process = None
         self.reader = None
@@ -78,7 +78,7 @@ class MusicPlayer(Window):
         self._is_paused = True
 
         if self.file_path:
-            self.border_title = f"🎵 Player - {os.path.basename(self.file_path)}"
+            self.border_title = f"> Player - {os.path.basename(self.file_path)}"
 
         self.system_mode_overrides = ["left", "right"]
 
@@ -90,7 +90,7 @@ class MusicPlayer(Window):
             yield self.progress
             yield self.lbl_time
             yield Static("[Space] Play/Pause", classes="help")
-            yield Static("[←/→] Seek 5s", classes="help")
+            yield Static("[<-/->] Seek 5s", classes="help")
 
     async def on_mount(self) -> None:
         if not self.file_path or not os.path.exists(self.file_path):
@@ -168,21 +168,24 @@ class MusicPlayer(Window):
 
     def _update_wave(self) -> None:
         if self._is_paused:
-            self.lbl_wave.update("▄" * 44)
+            self.lbl_wave.update("\n\n\n" + "." * 44)
             return
 
         t = time.time()
-        bars = []
-        for i in range(44):
+        rows = 4
+        cols = 44
+        grid = [[" " for _ in range(cols)] for _ in range(rows)]
+
+        for i in range(cols):
             val = 0.5 + 0.4 * math.sin(t * 12 + i * 0.4) * math.cos(t * 5 - i * 0.2)
             val += random.uniform(-0.1, 0.1)
             val = max(0.0, min(1.0, val))
 
-            chars = [" ", "▂", "▃", "▄", "▅", "▆", "▇", "█"]
-            idx = int(val * (len(chars) - 1))
-            bars.append(chars[idx])
+            row_idx = int((1.0 - val) * (rows - 1))
+            grid[row_idx][i] = "."
 
-        self.lbl_wave.update("".join(bars))
+        lines = ["".join(row) for row in grid]
+        self.lbl_wave.update("\n".join(lines))
 
     def _update_time_label(self) -> None:
         self.lbl_time.update(f"{self._format_time(self._current_pos)} / {self._format_time(self._duration)}")

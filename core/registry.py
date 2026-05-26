@@ -12,19 +12,19 @@ APP_REGISTRY = [
     },
     {
         "name": "Editor",
-        "icon": "📝",
+        "icon": "≡",
         "class": TextEditor,
         "description": "Powerful source code and text editor",
     },
     {
         "name": "Viewer",
-        "icon": "🖼️",
+        "icon": "#",
         "class": ImageViewer,
         "description": "High-performance image viewer",
     },
     {
         "name": "Player",
-        "icon": "🎵",
+        "icon": ">",
         "class": MusicPlayer,
         "description": "Headless audio player via MPV",
     }
