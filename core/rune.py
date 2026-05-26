@@ -81,27 +81,27 @@ class Rune(App):
         if not current_window:
             return
 
-        current_reg = current_window.screen_region
+        current_reg = current_window.region
         windows = [w for w in self.screen.query(Window)]
         candidates = [w for w in windows if w is not current_window]
         best_candidate = None
 
         if direction == "right":
-            right_side = [w for w in candidates if w.screen_region.x >= current_reg.right]
+            right_side = [w for w in candidates if w.region.x >= current_reg.right]
             if right_side:
-                best_candidate = min(right_side, key=lambda w: w.screen_region.x)
+                best_candidate = min(right_side, key=lambda w: w.region.x)
         elif direction == "left":
-            left_side = [w for w in candidates if w.screen_region.right <= current_reg.x]
+            left_side = [w for w in candidates if w.region.right <= current_reg.x]
             if left_side:
-                best_candidate = max(left_side, key=lambda w: w.screen_region.right)
+                best_candidate = max(left_side, key=lambda w: w.region.right)
         elif direction == "up":
-            above = [w for w in candidates if w.screen_region.bottom <= current_reg.y]
+            above = [w for w in candidates if w.region.bottom <= current_reg.y]
             if above:
-                best_candidate = max(above, key=lambda w: w.screen_region.bottom)
+                best_candidate = max(above, key=lambda w: w.region.bottom)
         elif direction == "down":
-            below = [w for w in candidates if w.screen_region.y >= current_reg.bottom]
+            below = [w for w in candidates if w.region.y >= current_reg.bottom]
             if below:
-                best_candidate = min(below, key=lambda w: w.screen_region.y)
+                best_candidate = min(below, key=lambda w: w.region.y)
 
         if best_candidate:
             best_candidate.focus()
