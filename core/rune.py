@@ -34,9 +34,9 @@ class Rune(App):
         Binding("ctrl+down", "navigate('down')", show=False, priority=True),
         Binding("ctrl+left", "navigate('left')", show=False, priority=True),
         Binding("ctrl+right", "navigate('right')", show=False, priority=True),
-        Binding("ctrl+n", "add_new_window()", show=False, priority=True),
         Binding("ctrl+p", "show_launcher()", show=False, priority=True),
-        Binding("ctrl+f11", "toggle_zoom()", show=False, priority=True),
+        Binding("ctrl+z", "toggle_zoom()", show=False, priority=True),
+        Binding("ctrl+w", "close_active_window()", show=False, priority=True),
     ]
 
     def __init__(self):
@@ -66,38 +66,46 @@ class Rune(App):
 
     def action_navigate(self, direction: str) -> None:
         focused = self.focused
-        if not focused or not focused.can_focus:
+        if not focused:
             return
 
-        current_reg = focused.region
-        focusable_widgets = [w for w in self.screen.query("*") if w.focusable]
-        candidates = [w for w in focusable_widgets if w is not focused]
+        current_window = None
+        if isinstance(focused, Window):
+            current_window = focused
+        else:
+            for ancestor in focused.ancestors:
+                if isinstance(ancestor, Window):
+                    current_window = ancestor
+                    break
+
+        if not current_window:
+            return
+
+        current_reg = current_window.screen_region
+        windows = [w for w in self.screen.query(Window)]
+        candidates = [w for w in windows if w is not current_window]
         best_candidate = None
 
         if direction == "right":
-            right_side = [w for w in candidates if w.region.x >= current_reg.right]
+            right_side = [w for w in candidates if w.screen_region.x >= current_reg.right]
             if right_side:
-                best_candidate = min(right_side, key=lambda w: w.region.x)
+                best_candidate = min(right_side, key=lambda w: w.screen_region.x)
         elif direction == "left":
-            left_side = [w for w in candidates if w.region.right <= current_reg.x]
+            left_side = [w for w in candidates if w.screen_region.right <= current_reg.x]
             if left_side:
-                best_candidate = max(left_side, key=lambda w: w.region.right)
+                best_candidate = max(left_side, key=lambda w: w.screen_region.right)
         elif direction == "up":
-            above = [w for w in candidates if w.region.bottom <= current_reg.y]
+            above = [w for w in candidates if w.screen_region.bottom <= current_reg.y]
             if above:
-                best_candidate = max(above, key=lambda w: w.region.bottom)
+                best_candidate = max(above, key=lambda w: w.screen_region.bottom)
         elif direction == "down":
-            below = [w for w in candidates if w.region.y >= current_reg.bottom]
+            below = [w for w in candidates if w.screen_region.y >= current_reg.bottom]
             if below:
-                best_candidate = min(below, key=lambda w: w.region.bottom)
+                best_candidate = min(below, key=lambda w: w.screen_region.y)
 
         if best_candidate:
             best_candidate.focus()
 
-    def action_add_new_window(self):
-        new = PTYWidget(command=["bash"])
-        self.manager.add_application(new)
-        new.focus()
 
     def action_show_launcher(self) -> None:
         def handle_selection(app_entry: dict | None) -> None:
@@ -108,20 +116,29 @@ class Rune(App):
 
         self.push_screen(ApplicationLauncher(APP_REGISTRY), handle_selection)
 
-    def action_toggle_zoom(self):
+    def action_toggle_zoom(self) -> None:
         focused = self.focused
-        if not focused or not focused.can_focus:
+        if not focused:
             return
 
-        if not isinstance(focused, Window):
+        current_window = None
+        if isinstance(focused, Window):
+            current_window = focused
+        else:
+            for ancestor in focused.ancestors:
+                if isinstance(ancestor, Window):
+                    current_window = ancestor
+                    break
+
+        if not current_window:
             return
 
         if self.has_class("zoom-active"):
             self.remove_class("zoom-active")
-            focused.remove_class("zoomed")
+            current_window.remove_class("zoomed")
         else:
             self.add_class("zoom-active")
-            focused.add_class("zoomed")
+            current_window.add_class("zoomed")
 
     async def _start_ipc_server(self) -> None:
         if os.path.exists(self.SOCKET_PATH):
@@ -163,3 +180,22 @@ class Rune(App):
     async def on_unmount(self) -> None:
         if os.path.exists(self.SOCKET_PATH):
             os.remove(self.SOCKET_PATH)
+
+    def action_close_active_window(self) -> None:
+        focused = self.focused
+        if not focused:
+            return
+
+        current_window = None
+        if isinstance(focused, Window):
+            current_window = focused
+        else:
+            for ancestor in focused.ancestors:
+                if isinstance(ancestor, Window):
+                    current_window = ancestor
+                    break
+
+        if current_window:
+            if current_window in self.manager.applications:
+                self.manager.applications.remove(current_window)
+            current_window.remove()
