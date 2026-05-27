@@ -2,6 +2,7 @@ from core.pty_widget import PTYWidget
 from core.text_editor import TextEditor
 from core.image_viewer import ImageViewer
 from core.music_player import MusicPlayer
+from core.video_player import VideoPlayer
 
 APP_REGISTRY = [
     {
@@ -27,5 +28,11 @@ APP_REGISTRY = [
         "icon": ">",
         "class": MusicPlayer,
         "description": "Headless audio player via MPV",
+    },
+    {
+        "name": "Watcher",
+        "icon": "W",
+        "class": VideoPlayer,
+        "description": "High-performance ASCII video player",
     }
 ]

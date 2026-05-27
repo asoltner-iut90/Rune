@@ -15,6 +15,7 @@ Rune is a lightweight, high-performance Text User Interface (TUI) Desktop Enviro
 - **Text Editor (TextEditor)**: Code and plain-text editor featuring dynamic syntax detection, real-time modification indicators, and interactive modal file management.
 - **Image Viewer (ImageViewer)**: High-performance image render engine supporting static graphics and multi-frame animations through specialized rendering matrix caches.
 - **Music Player (MusicPlayer)**: A headless audio execution interface harnessing mpv over custom Unix sockets, complete with an ASCII dot-matrix wave visualizer designed for raw TTY compliance.
+- **Video Watcher (VideoPlayer)**: An ASCII video render engine displaying real-time video frames via OpenCV, synchronized with audio through mpv over custom Unix sockets.
 
 ## System Keybindings
 
@@ -39,6 +40,7 @@ Rune is a lightweight, high-performance Text User Interface (TUI) Desktop Enviro
 │   ├── image_viewer.py        # ASCII image pipeline
 │   ├── music_player.py        # Audio front-end controlling MPV 
 │   ├── pty_widget.py          # Terminal multiplexer backend
+│   ├── video_player.py        # Video player with synchronized audio
 │   ├── registry.py            # Global application dictionary
 │   ├── rune.py                # Main app class definition
 │   ├── taskbar.py             # Lower status utility block and live clock
@@ -72,6 +74,9 @@ Rune runs a continuous internal UNIX socket stream handler mapped to `/tmp/rune.
 
 # Queue a music file into the player interface
 ./bin/rune run player /path/to/track.mp3
+
+# Play a video with synchronized audio
+./bin/rune run watcher /path/to/video.mp4
 ```
 
 > [!NOTE]
